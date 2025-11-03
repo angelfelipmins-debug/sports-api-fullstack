@@ -1,0 +1,10 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+selenium==4.15.2
+requests==2.31.0
+beautifulsoup4==4.12.2
+apscheduler==3.10.4
+redis==5.0.1
+firebase-admin==6.4.0
+openai==1.3.7
+pyvirtualdisplay==3.0
