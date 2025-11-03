@@ -7,7 +7,7 @@ import redis
 from firebase_admin import credentials, firestore, initialize_app
 from openai import OpenAI
 import asyncio
-from scraper import run_scraper, get_proxies, setup_driver, scrape_streams
+from scraper import run_scraper, setup_driver, scrape_streams  # Quité get_proxies
 import os
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://default:AX2PAAIncDJhYTljZjE3MDBlZTQ0MDcyYThkOWVmMDc5MDkwMThmZnAyMzIxNDM@splendid-bullfrog-32143.upstash.io:6379")
@@ -94,13 +94,6 @@ def generate_player_html(event):
     return f"""<!DOCTYPE html><html lang="es"><head><title>Player {event['event']}</title><script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12"></script></head><body><video id="video" controls width="100%" height="auto" autoplay muted></video><div id="status">Cargando...</div><div id="ad-container" style="display:none;background:gray;height:100px;"><iframe src="" width="100%"></iframe></div><script>{player_js}</script></body></html>"""
 
 @app.get("/api/agenda")
-async def debug_agenda():
-    try:
-        with open('agenda.json', 'r') as f:
-            data = json.load(f)
-        return JSONResponse(content=data)
-    except FileNotFoundError:
-        return JSONResponse(content={"error": "agenda.json no encontrada – corre scraper primero"}, status_code=404)
 async def get_agenda(liga: str = Query(None), idioma: str = Query(None), pais: str = Query(None)):
     key = f"agenda:{liga or ''}:{idioma or ''}:{pais or ''}"
     cached = r.get(key)
@@ -112,7 +105,7 @@ async def get_agenda(liga: str = Query(None), idioma: str = Query(None), pais: s
         'timestamp': firestore.SERVER_TIMESTAMP,
         'status': 'pending'
     })
-    return JSONResponse(content={{'query_id': query_id, 'status': 'pending', 'message': 'Connect to /ws/live/{{query_id}} for updates'}})
+    return JSONResponse(content={'query_id': query_id, 'status': 'pending', 'message': 'Connect to /ws/live/{query_id} for updates'})
 
 @app.websocket("/ws/live/{query_id}")
 async def websocket_endpoint(websocket: WebSocket, query_id: str):
@@ -126,8 +119,7 @@ async def websocket_endpoint(websocket: WebSocket, query_id: str):
 
 @app.get("/refresh_token")
 async def refresh_token(stream_id: int = Query(0), league: str = Query(None)):
-    proxies = get_proxies()
-    streams = scrape_streams("dummy event", league, proxies=proxies)
+    streams = scrape_streams("dummy event", league)  # Sin proxies
     new_url = streams[stream_id % len(streams)]['url'] if streams else "No token available"
     return new_url
 
@@ -140,11 +132,11 @@ async def batch_process():
         for event in filtered:
             await process_ai_summary(event)
             event['player_html'] = generate_player_html(event)
-        key = f"agenda:{{data['liga'] or ''}}:{{data['idioma'] or ''}}:{{data['pais'] or ''}}"
+        key = f"agenda:{data['liga'] or ''}:{data['idioma'] or ''}:{data['pais'] or ''}"
         r.set(key, json.dumps(filtered), ex=900)
-        db.collection('pending_queries').document(query_id).update({{'status': 'processed'}})
+        db.collection('pending_queries').document(query_id).update({'status': 'processed'})
         if query_id in ws_connections:
-            await ws_connections[query_id].send_text(json.dumps({{'status': 'ready', 'data': filtered}}))
+            await ws_connections[query_id].send_text(json.dumps({'status': 'ready', 'data': filtered}))
     print("Batch processed")
 
 scheduler.add_job(run_scraper, 'interval', minutes=15)
