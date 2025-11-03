@@ -39,23 +39,7 @@ USER_AGENTS = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'
 ]
 
-def get_proxies():
-    try:
-        r = requests.get('https://free-proxy-list.net/', timeout=10)
-        soup = BeautifulSoup(r.text, 'html.parser')
-        proxies = []
-        table = soup.find('table', {'id': 'proxylisttable'})
-        if table:
-            for row in table.find_all('tr')[1:20]:
-                tds = row.find_all('td')
-                if len(tds) > 6 and tds[6].text.strip() == 'yes':
-                    proxy = f"{tds[1].text}:{tds[2].text}"
-                    proxies.append(proxy)
-        return proxies if proxies else ['127.0.0.1:8080']
-    except:
-        return ['127.0.0.1:8080']
-
-def setup_driver(proxy=None):
+def setup_driver():
     display = Display(visible=0, size=(800, 600))
     display.start()
     options = Options()
@@ -64,19 +48,16 @@ def setup_driver(proxy=None):
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
     options.add_argument(f'--user-agent={random.choice(USER_AGENTS)}')
-    if proxy:
-        options.add_argument(f'--proxy-server=http://{proxy}')
     service = Service('/usr/bin/chromedriver')
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
-def scrape_streams(event_name, league, proxies, lang='es', country='global'):  # Fix: proxies antes de defaults
+def scrape_streams(event_name, league, lang='es', country='global'):
     streams = []
     sampled_sources = random.sample(SOURCES, min(5, len(SOURCES)))
     for source in sampled_sources:
         try:
-            proxy = random.choice(proxies)
-            driver = setup_driver(proxy)
+            driver = setup_driver()
             search_query = f"{event_name} {league} {lang} {country}".replace(' ', '+')
             url = f"{source}/?q={search_query}" if '?' not in source else f"{source}&q={search_query}"
             driver.get(url)
@@ -99,7 +80,6 @@ def scrape_streams(event_name, league, proxies, lang='es', country='global'):  #
     return streams
 
 def run_scraper():
-    proxies = get_proxies()
     today = '2025-11-03'
     url_football = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Football"
     url_basketball = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Basketball"
@@ -121,7 +101,7 @@ def run_scraper():
         away_score = detail.get('intAwayScore')
         if home_score is not None and away_score is not None:
             score = f"{home_score} - {away_score}"
-        streams = scrape_streams(event_name, league, proxies)  # Fix: proxies posicional
+        streams = scrape_streams(event_name, league)
         agenda.append({
             'id': event_id,
             'event': event_name,
