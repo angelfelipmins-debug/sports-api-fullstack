@@ -70,7 +70,7 @@ def setup_driver(proxy=None):
     driver = webdriver.Chrome(service=service, options=options)
     return driver
 
-def scrape_streams(event_name, league, lang='es', country='global', proxies):
+def scrape_streams(event_name, league, proxies, lang='es', country='global'):  # Fix: proxies antes de defaults
     streams = []
     sampled_sources = random.sample(SOURCES, min(5, len(SOURCES)))
     for source in sampled_sources:
@@ -121,7 +121,7 @@ def run_scraper():
         away_score = detail.get('intAwayScore')
         if home_score is not None and away_score is not None:
             score = f"{home_score} - {away_score}"
-        streams = scrape_streams(event_name, league)
+        streams = scrape_streams(event_name, league, proxies)  # Fix: proxies posicional
         agenda.append({
             'id': event_id,
             'event': event_name,
