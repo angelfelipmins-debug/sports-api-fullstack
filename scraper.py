@@ -41,12 +41,10 @@ def scrape_streams(event_name, league, lang='es', country='global'):
             url = f"{source}/?q={search_query}" if '?' not in source else f"{source}&q={search_query}"
             r = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(r.text, 'html.parser')
-            # Busca genérico m3u8/hls/token en links/iframes
             elements = soup.find_all(['iframe', 'a', 'video'], attrs={'src': True, 'href': True})
-            for elem in elements[:2]:  # Top 2 por source
+            for elem in elements[:2]:
                 attr = elem.get('src') or elem.get('href')
                 if attr and 'http' in attr and ('m3u8' in attr or 'hls' in attr or 'stream' in attr):
-                    # Mock token si no hay (real scrape captura)
                     if '?' not in attr:
                         attr += f"?token={random.randint(100000,999999)}&expires={int(time.time()) + 1800}"
                     streams.append({'source': source, 'url': attr, 'lang': lang, 'country': country, 'league_filter': league})
@@ -57,7 +55,6 @@ def scrape_streams(event_name, league, lang='es', country='global'):
         except Exception as e:
             print(f"Error source {source}: {e}")
             continue
-    # Fallback mock si 0 streams
     if not streams:
         streams = [
             {
@@ -76,7 +73,9 @@ def run_scraper():
     url_basketball = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Basketball"
     r_football = requests.get(url_football)
     r_basketball = requests.get(url_basketball)
-    events = r_football.json().get('events', []) + r_basketball.json().get('events', [])
+    events_football = r_football.json().get('events', []) or []  # Fix: or [] para None
+    events_basketball = r_basketball.json().get('events', []) or []  # Fix: or [] para None
+    events = events_football + events_basketball  # Ahora safe + list + list
     
     agenda = []
     for event in events[:10]:
