@@ -73,9 +73,9 @@ def run_scraper():
     url_basketball = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Basketball"
     r_football = requests.get(url_football)
     r_basketball = requests.get(url_basketball)
-    events_football = r_football.json().get('events', []) or []  # Fix: or [] para None
-    events_basketball = r_basketball.json().get('events', []) or []  # Fix: or [] para None
-    events = events_football + events_basketball  # Ahora safe + list + list
+    events_football = r_football.json().get('events', []) or []  # Safe
+    events_basketball = r_basketball.json().get('events', []) or []  # Safe
+    events = events_football + events_basketball
     
     agenda = []
     for event in events[:10]:
@@ -86,11 +86,19 @@ def run_scraper():
         score = None
         detail_url = f"http://www.thesportsdb.com/api/v1/json/123/lookupevent.php?i={event_id}"
         detail_r = requests.get(detail_url)
-        detail = detail_r.json().get('events', [{}])[0]
-        home_score = detail.get('intHomeScore')
-        away_score = detail.get('intAwayScore')
-        if home_score is not None and away_score is not None:
-            score = f"{home_score} - {away_score}"
+        try:
+            detail_json = detail_r.json()  # Safe parse
+            if isinstance(detail_json, dict):
+                detail = detail_json.get('events', [{}])[0]
+                home_score = detail.get('intHomeScore')
+                away_score = detail.get('intAwayScore')
+                if home_score is not None and away_score is not None:
+                    score = f"{home_score} - {away_score}"
+            else:
+                print(f"Invalid JSON for event {event_id}: {detail_json}")
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"JSON error for event {event_id}: {e}")
+            score = None  # Fallback
         streams = scrape_streams(event_name, league)
         agenda.append({
             'id': event_id,
