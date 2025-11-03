@@ -7,8 +7,9 @@ import redis
 from firebase_admin import credentials, firestore, initialize_app
 from openai import OpenAI
 import asyncio
-from scraper import run_scraper, setup_driver, scrape_streams  # Quité get_proxies
+from scraper import run_scraper, scrape_streams  # Sin setup_driver
 import os
+import time
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://default:AX2PAAIncDJhYTljZjE3MDBlZTQ0MDcyYThkOWVmMDc5MDkwMThmZnAyMzIxNDM@splendid-bullfrog-32143.upstash.io:6379")
 cred = credentials.Certificate('firebase_key.json')
@@ -107,6 +108,15 @@ async def get_agenda(liga: str = Query(None), idioma: str = Query(None), pais: s
     })
     return JSONResponse(content={'query_id': query_id, 'status': 'pending', 'message': 'Connect to /ws/live/{query_id} for updates'})
 
+@app.get("/debug/agenda")
+async def debug_agenda():
+    try:
+        with open('agenda.json', 'r') as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except FileNotFoundError:
+        return JSONResponse(content={"error": "agenda.json no encontrada – corre scraper primero"}, status_code=404)
+
 @app.websocket("/ws/live/{query_id}")
 async def websocket_endpoint(websocket: WebSocket, query_id: str):
     await websocket.accept()
@@ -119,7 +129,7 @@ async def websocket_endpoint(websocket: WebSocket, query_id: str):
 
 @app.get("/refresh_token")
 async def refresh_token(stream_id: int = Query(0), league: str = Query(None)):
-    streams = scrape_streams("dummy event", league)  # Sin proxies
+    streams = scrape_streams("dummy event", league)
     new_url = streams[stream_id % len(streams)]['url'] if streams else "No token available"
     return new_url
 
