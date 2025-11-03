@@ -94,6 +94,13 @@ def generate_player_html(event):
     return f"""<!DOCTYPE html><html lang="es"><head><title>Player {event['event']}</title><script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.12"></script></head><body><video id="video" controls width="100%" height="auto" autoplay muted></video><div id="status">Cargando...</div><div id="ad-container" style="display:none;background:gray;height:100px;"><iframe src="" width="100%"></iframe></div><script>{player_js}</script></body></html>"""
 
 @app.get("/api/agenda")
+async def debug_agenda():
+    try:
+        with open('agenda.json', 'r') as f:
+            data = json.load(f)
+        return JSONResponse(content=data)
+    except FileNotFoundError:
+        return JSONResponse(content={"error": "agenda.json no encontrada – corre scraper primero"}, status_code=404)
 async def get_agenda(liga: str = Query(None), idioma: str = Query(None), pais: str = Query(None)):
     key = f"agenda:{liga or ''}:{idioma or ''}:{pais or ''}"
     cached = r.get(key)
