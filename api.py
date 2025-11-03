@@ -7,7 +7,7 @@ import redis
 from firebase_admin import credentials, firestore, initialize_app
 from openai import OpenAI
 import asyncio
-from scraper import run_scraper, scrape_streams  # Sin setup_driver
+from scraper import run_scraper, scrape_streams
 import os
 import time
 
@@ -21,8 +21,16 @@ app = FastAPI()
 scheduler = BackgroundScheduler()
 ws_connections = {}
 
-with open('agenda.json', 'r') as f:
-    global_agenda = json.load(f)
+# Auto-genera agenda.json si no existe
+try:
+    with open('agenda.json', 'r') as f:
+        global_agenda = json.load(f)
+except FileNotFoundError:
+    print("agenda.json no encontrada – Generando con scraper...")
+    run_scraper()  # Corre scraper al startup
+    with open('agenda.json', 'r') as f:
+        global_agenda = json.load(f)
+    print("agenda.json generada OK")
 
 def filter_agenda(liga=None, idioma=None, pais=None):
     filtered = global_agenda
@@ -115,7 +123,7 @@ async def debug_agenda():
             data = json.load(f)
         return JSONResponse(content=data)
     except FileNotFoundError:
-        return JSONResponse(content={"error": "agenda.json no encontrada – corre scraper primero"}, status_code=404)
+        return JSONResponse(content={"error": "agenda.json no encontrada – ejecutando scraper..."}, status_code=404)
 
 @app.websocket("/ws/live/{query_id}")
 async def websocket_endpoint(websocket: WebSocket, query_id: str):
