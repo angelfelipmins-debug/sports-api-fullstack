@@ -68,7 +68,7 @@ def scrape_streams(event_name, league, lang='es', country='global'):
     return streams
 
 def run_scraper():
-    today = '2025-11-03'  # Hoy
+    today = '2024-11-03'  # Hoy
     # TheSportsDB para events fútbol/baloncesto
     url_football = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Football"
     url_basketball = f"http://www.thesportsdb.com/api/v1/json/123/eventsday.php?d={today}&s=Basketball"
